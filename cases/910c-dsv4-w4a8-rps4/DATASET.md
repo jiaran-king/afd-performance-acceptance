@@ -1,6 +1,6 @@
 # Frozen requests / 冻结负载
 
-[GitHub Release](https://github.com/jiaran-king/afd-performance-acceptance/releases/tag/v0.1.0) 附 `afd-wildchat-rps4-v2.tar.gz`，包含参考实跑的冻结输入文件。各组的输入 token ID、顺序与原实验一致。 [校验值](case.json) · [冻结清单](workload.json)
+[GitHub Release](https://github.com/jiaran-king/alternative-afd-performance-acceptance/releases/tag/v0.1.0) 附 `afd-wildchat-rps4-v2.tar.gz`，包含参考实跑的冻结输入文件。各组的输入 token ID、顺序与原实验一致。 [校验值](case.json) · [冻结清单](workload.json)
 
 | Split | 会话 | 请求 | 用途 |
 | --- | ---: | ---: | --- |

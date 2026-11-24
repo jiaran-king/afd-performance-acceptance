@@ -25,7 +25,7 @@
 
 ## 下载和编译
 
-首轮通过 [Release](https://github.com/jiaran-king/afd-performance-acceptance/releases/tag/v0.1.0) 获取约 20 MB 的冻结请求包，校验包和每个 split 的 SHA256。离线组网可把同一 Release 文件放到共享目录，并填写 `WORKLOAD_ARCHIVE`。
+首轮通过 [Release](https://github.com/jiaran-king/alternative-afd-performance-acceptance/releases/tag/v0.1.0) 获取约 20 MB 的冻结请求包，校验包和每个 split 的 SHA256。离线组网可把同一 Release 文件放到共享目录，并填写 `WORKLOAD_ARCHIVE`。
 
 P 侧复用镜像内固定的 vLLM 与 vLLM-Ascend 源码，从公开 AFD 仓库获取固定提交并编译 AFD 扩展。CWS overlay 应用仓库提供的 MRV2 Compressor/SCFA 补丁和 Mooncake 逻辑页导出补丁，使用匹配 CANN 编译 CANN 算子 installer 并安装到 checkout 的 `.runtime/`。已有同哈希的原版 CWS vendor 时可通过 `CWS_VENDOR_DIR` 指定。实际加载路径和 hash 会在冒烟后写入 `native-maps.json`。 [环境脚本](../scripts/prepare-runtime.sh)
 

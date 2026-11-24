@@ -13,7 +13,7 @@ from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCK = ROOT / "cases/910c-dsv4-w4a8-rps4/case.json"
-RELEASES = "https://github.com/jiaran-king/afd-performance-acceptance/releases/download"
+RELEASES = "https://github.com/jiaran-king/alternative-afd-performance-acceptance/releases/download"
 
 
 def sha(path):

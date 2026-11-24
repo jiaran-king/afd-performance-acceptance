@@ -1,4 +1,4 @@
-# AFD Performance Acceptance
+# 备选：afd性能验收
 
 这是 `DeepSeek-V4-Flash W4A8` 在 Ascend 910C 上的 Prefill 异步 A/F 分离验收案例。`2026-11-23` 的正式对照使用两台 910C、共 32 DIE，PD 入口实发 4 RPS。AFD 12A+4F 的平均 TTFT 从双 EP8 的 **3.013 秒**降至 **1.509 秒**，降低 **49.93%**。
 
