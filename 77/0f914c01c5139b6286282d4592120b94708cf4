@@ -1,0 +1,81 @@
+scripts/environment.sh
+  s_c3191fbbef15b3::t_fb333991804ba0 1-13
+site.env.example
+  s_c3191fbbef15b3::t_fb333991804ba0 1-33
+  s_c3191fbbef15b3::t_fa8aa325c7a394 34-35
+results/2026-11-23/README.md
+  s_c3191fbbef15b3::t_cd022d07a9bbf9 1-42
+README.md
+  s_c3191fbbef15b3::t_cd022d07a9bbf9 1-28
+scripts/prepare-workload.py
+  s_c3191fbbef15b3::t_35e1cb0b615aec 1-77,79-89
+  s_c3191fbbef15b3::t_fa8aa325c7a394 78
+cases/910c-dsv4-w4a8-rps4/config.env
+  s_c3191fbbef15b3::t_fb333991804ba0 1-27
+reproduce.sh
+  s_c3191fbbef15b3::t_fa8aa325c7a394 118,124,156
+  s_c3191fbbef15b3::t_310f83709f717f 1-117,119-123,125-155,157
+scripts/verify-reference.py
+  s_c3191fbbef15b3::t_35e1cb0b615aec 1-45
+scripts/audit.py
+  s_c3191fbbef15b3::t_ae3148e6fa8aa0 1-3,278-281
+  s_c3191fbbef15b3::t_35e1cb0b615aec 4-265,267-271,276-277
+  s_c3191fbbef15b3::t_fa8aa325c7a394 266,272-275
+scripts/preflight.py
+  s_c3191fbbef15b3::t_310f83709f717f 1-8,10-27,29-30,40-67,69-72,76-79
+  s_c3191fbbef15b3::t_fa8aa325c7a394 9,28,31-39,68,73-75
+scripts/launch.sh
+  s_c3191fbbef15b3::t_60ccd55c6ab7a4 1-11,29-31,152-159
+  s_c3191fbbef15b3::t_273bbde1dc1e87 38,40
+  s_c3191fbbef15b3::t_fb333991804ba0 12-26,32-37,39,41-151,160
+  s_c3191fbbef15b3::t_fa8aa325c7a394 27-28
+cases/910c-dsv4-w4a8-rps4/case.json
+  s_c3191fbbef15b3::t_0ea0453aa053f7 1-23,25-32,35-37,63-64
+  s_c3191fbbef15b3::t_fa8aa325c7a394 24,38-62
+  s_c3191fbbef15b3::t_310f83709f717f 33-34
+scripts/prepare-runtime.py
+  s_c3191fbbef15b3::t_fb333991804ba0 1-41
+scripts/stop.py
+  s_c3191fbbef15b3::t_c6d6e45294f2c4 1-12,31-68
+  s_c3191fbbef15b3::t_310f83709f717f 13-30
+scripts/run-replay.sh
+  s_c3191fbbef15b3::t_15c113fdfe1d5d 1-4,38-45,47-59
+  s_c3191fbbef15b3::t_fb333991804ba0 5-37
+  s_c3191fbbef15b3::t_273bbde1dc1e87 46
+scripts/prepare-runtime.sh
+  s_c3191fbbef15b3::t_fa8aa325c7a394 4-6,45,60-61,72-77
+  s_c3191fbbef15b3::t_fb333991804ba0 1-3,7-44,46-59,62,64,66-71,78-100
+  s_c3191fbbef15b3::t_273bbde1dc1e87 63,65
+docs/reproduce-910c.md
+  s_c3191fbbef15b3::t_cd022d07a9bbf9 1-29,31-38
+  s_c3191fbbef15b3::t_fa8aa325c7a394 30
+scripts/smoke.py
+  s_c3191fbbef15b3::t_fb333991804ba0 4-33
+  s_c3191fbbef15b3::t_a28f0873ba4704 1-3,34-149
+cases/910c-dsv4-w4a8-rps4/DATASET.md
+  s_c3191fbbef15b3::t_cd022d07a9bbf9 1-15
+THIRD_PARTY_NOTICES.md
+  s_c3191fbbef15b3::t_d32b34d326dde9 1-5
+scripts/run-group.sh
+  s_c3191fbbef15b3::t_310f83709f717f 1-86
+scripts/verify-native.py
+  s_c3191fbbef15b3::t_310f83709f717f 1-37
+docs/acceptance.md
+  s_c3191fbbef15b3::t_cd022d07a9bbf9 1-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "770f914c01c5139b6286282d4592120b94708cf4",
+  "prompts": {},
+  "sessions": {
+    "s_c3191fbbef15b3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20716-8fab-7a33-873b-1fa928fcee19",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "jiaran-king <jiaranran2@gmail.com>"
+    }
+  }
+}
