@@ -1,0 +1,25 @@
+README.md
+  s_c3191fbbef15b3::t_69f993e28e312a 1
+cases/910c-dsv4-w4a8-rps4/DATASET.md
+  s_c3191fbbef15b3::t_69f993e28e312a 3
+docs/reproduce-910c.md
+  s_c3191fbbef15b3::t_69f993e28e312a 28
+scripts/prepare-workload.py
+  s_c3191fbbef15b3::t_69f993e28e312a 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "cea22e232c479c3fd112dfb960a89c0ff1b29840",
+  "prompts": {},
+  "sessions": {
+    "s_c3191fbbef15b3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20716-8fab-7a33-873b-1fa928fcee19",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "jiaran-king <jiaranran2@gmail.com>"
+    }
+  }
+}
