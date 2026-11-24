@@ -1,0 +1,64 @@
+{
+  "case": "910c-dsv4-w4a8-rps4",
+  "release": "v0.1.0",
+  "hardware": {
+    "chip": "Ascend 910C",
+    "prefill_dies": 16,
+    "decode_dies": 16
+  },
+  "runtime": {
+    "image_tag": "nightly-main-a3-openeuler-20260928172624_aarch64",
+    "image_digest_status": "Tag recorded in the reference run.",
+    "vllm": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+    "vllm_ascend": "8d4409d6256d8a6729140ddcc0d1889e3f96cdd6",
+    "afd": "bc80959207f4d6b0e78a51b283eface1ac8d3084",
+    "cann": "9.1.0",
+    "driver": "25.5.1.1",
+    "torch_npu": "2.10.0.post4",
+    "cws_reference_opapi_sha256": "398151e8593c3c0d4ae46ce0fa13b5a9ac70e975297b0b0781991b69da25646b",
+    "afd_reference_opapi_sha256": "2b8dbd453b86c3b1095a0385f5cd745b5e28d7634456342d3a8077e2367efeb5",
+    "afd_reference_extension_sha256": "2998dc5b6077b1fc7fc4e1540ae1c12ebedf96557265620abd47c9eee557f605",
+    "patches": {
+      "cws-pd-logical-pages.patch": "1c86c027bb460bbda1aafdbace4a16bde3ffc254989c6a286e7841c8ab85b2b3",
+      "cws-v030-mrv2.patch": "d1422ee0c06e3617e550b25f4042bdea435147f6498b8fcab1889d6fb65e9488"
+    }
+  },
+  "model": {
+    "name": "DeepSeek-V4-Flash W4A8 + DSpark",
+    "dspark_block_size": 5,
+    "file_sha256": {
+      "config.json": "6c6cdc4a47e00e41137081429b95bd5c1cf91ba62e87309d1398431de7f4a8e1",
+      "quant_model_description.json": "a2e85871ba049d8b475bb5de5b75a79b6fedb577eefc2ae86d57879143431b60",
+      "tokenizer.json": "8f9f37ca37fdc4f5fd36d5cf4d3b0e8392edb4e894fd10cc0d70b4957c8633cf"
+    },
+    "safetensors_shards": 42
+  },
+  "load": {
+    "asset": "afd-wildchat-rps4-v2.tar.gz",
+    "asset_sha256": "0f0e38743b2cdced2a376b2f6a3801bc5254e48132f04d52ccc5b745e3e386f8",
+    "splits": {
+      "qualification": {
+        "requests": 400,
+        "sha256": "ace2a4c6373d6805ce30aaf0e7696ca72f7d0be3804d551a595b9aa8a83792d1"
+      },
+      "formal_candidate": {
+        "requests": 1200,
+        "sha256": "a2790b443e9a0ba14deedf4b683e64f75450b7db35fa2bc35a11c10b650a111b"
+      },
+      "warmup": {
+        "requests": 16,
+        "sha256": "e9d0ac33bcc10538e2b0f39b25dcd1298cb897a9b9114770035c9ef3b0965b14"
+      }
+    },
+    "reference_index_sha256": "d26feb185bea341ac923d66434774c6ce5af343d1ff2e5ef7490e1e7b2d24f87",
+    "prefix_cache": false,
+    "request_rate": 4,
+    "output_tokens": 1,
+    "required_ttft_reduction": 0.2,
+    "asset_support_files": {
+      "DATASET.md": "d38916230565d113f332d4d34bc9caa1c79e6d3b864aae807fbc8adae9c8f047",
+      "DATASET-LICENSE.md": "05c6c4f7f153c52b0c61cce4782a0ff21b22a39da601d26bd67d70252bb537bc",
+      "workload.json": "494614bbb3108116e83c88d122e18adcb71729b22942f56f50d49b1e8ae44f8f"
+    }
+  }
+}

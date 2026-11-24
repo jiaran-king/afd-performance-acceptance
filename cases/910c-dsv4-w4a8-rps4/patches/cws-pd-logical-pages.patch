@@ -1,0 +1,27 @@
+diff --git a/vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake_hybrid_connector.py b/vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake_hybrid_connector.py
+--- a/vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake_hybrid_connector.py
++++ b/vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake_hybrid_connector.py
+@@ -53,6 +53,7 @@
+ from vllm.v1.request import RequestStatus
+ 
+ from vllm_ascend.ascend_config import get_ascend_config, init_ascend_config
++from vllm_ascend.core.compressor_tail import AscendCompressorTailSpec
+ from vllm_ascend.core.kv_cache_interface import is_circular_kv_cache_spec
+ from vllm_ascend.distributed.kv_transfer.kv_p2p.mooncake.utils import (
+     as_kv_cache_tensors,
+@@ -1452,6 +1453,15 @@
+         kv_cache_specs = getattr(self, "kv_cache_specs", ())
+         for i, blocks in enumerate(block_ids):
+             if i < len(kv_cache_specs) and all(is_circular_kv_cache_spec(spec) for spec in kv_cache_specs[i]):
++                spec = kv_cache_specs[i][0]
++                if blocks and isinstance(spec, AscendCompressorTailSpec):
++                    assert len(blocks) == spec.ring_blocks_per_request
++                    # The native CYCLE kernel addresses token rows modulo this
++                    # ring. Export the corresponding logical pages in order
++                    # for a CONTINUOUS consumer, including both partial ends.
++                    end_page = cdiv(prompt_len, spec.storage_block_size)
++                    start_page = max(0, end_page - self.num_swa_blocks[i])
++                    blocks = [blocks[page % len(blocks)] for page in range(start_page, end_page)]
+                 transfer_block_ids.append(blocks)
+                 continue
+             group_token_len = prompt_len

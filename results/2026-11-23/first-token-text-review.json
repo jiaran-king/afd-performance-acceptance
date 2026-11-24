@@ -1,0 +1,20 @@
+{
+  "two_baseline_prewarms": {
+    "matched_requests": 16,
+    "visible_text_differences": 1,
+    "after_stripping_whitespace": 1,
+    "one_empty_piece": 0
+  },
+  "prewarm_ep8_vs_afd": {
+    "matched_requests": 16,
+    "visible_text_differences": 2,
+    "after_stripping_whitespace": 2,
+    "one_empty_piece": 0
+  },
+  "formal_ep8_vs_afd": {
+    "matched_requests": 1200,
+    "visible_text_differences": 75,
+    "after_stripping_whitespace": 75,
+    "one_empty_piece": 2
+  }
+}

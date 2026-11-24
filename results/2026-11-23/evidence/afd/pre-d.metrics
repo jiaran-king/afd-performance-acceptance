@@ -1,0 +1,16 @@
+vllm:prompt_tokens_by_source_total{engine="0",model_name="dsv4",source="external_kv_transfer"} 19722.0
+vllm:prompt_tokens_by_source_total{engine="1",model_name="dsv4",source="external_kv_transfer"} 56851.0
+vllm:prompt_tokens_by_source_total{engine="2",model_name="dsv4",source="external_kv_transfer"} 5503.0
+vllm:prompt_tokens_by_source_total{engine="3",model_name="dsv4",source="external_kv_transfer"} 6317.0
+vllm:prompt_tokens_by_source_total{engine="4",model_name="dsv4",source="external_kv_transfer"} 1288.0
+vllm:prompt_tokens_by_source_total{engine="5",model_name="dsv4",source="external_kv_transfer"} 5795.0
+vllm:prompt_tokens_by_source_total{engine="6",model_name="dsv4",source="external_kv_transfer"} 4962.0
+vllm:prompt_tokens_by_source_total{engine="7",model_name="dsv4",source="external_kv_transfer"} 9644.0
+vllm:prompt_tokens_by_source_total{engine="8",model_name="dsv4",source="external_kv_transfer"} 6294.0
+vllm:prompt_tokens_by_source_total{engine="9",model_name="dsv4",source="external_kv_transfer"} 6100.0
+vllm:prompt_tokens_by_source_total{engine="10",model_name="dsv4",source="external_kv_transfer"} 5829.0
+vllm:prompt_tokens_by_source_total{engine="11",model_name="dsv4",source="external_kv_transfer"} 16688.0
+vllm:prompt_tokens_by_source_total{engine="12",model_name="dsv4",source="external_kv_transfer"} 22048.0
+vllm:prompt_tokens_by_source_total{engine="13",model_name="dsv4",source="external_kv_transfer"} 10460.0
+vllm:prompt_tokens_by_source_total{engine="14",model_name="dsv4",source="external_kv_transfer"} 1349.0
+vllm:prompt_tokens_by_source_total{engine="15",model_name="dsv4",source="external_kv_transfer"} 6932.0

@@ -1,0 +1,20 @@
+{
+  "workload_sha256": "a2790b443e9a0ba14deedf4b683e64f75450b7db35fa2bc35a11c10b650a111b",
+  "scheduling_policy": "fixed-slot-order, dependency-checked",
+  "request_rate": 4.0,
+  "offered_rps": 3.999994737448708,
+  "offered_input_tokens_per_second": 40109.293941267555,
+  "request_throughput": 3.931167065587433,
+  "duration_s": 305.25286256708205,
+  "send_span_s": 299.7503943629563,
+  "inflight_at_last_send": 16,
+  "missed_slots_for_dependency": 0,
+  "requested": 1200,
+  "sent": 1200,
+  "completed": 1200,
+  "failed": 0,
+  "unsent": [],
+  "mean_ttft_ms": 3013.410341228979,
+  "median_ttft_ms": 2856.3809227198362,
+  "p95_ttft_ms": 4888.395007606596
+}

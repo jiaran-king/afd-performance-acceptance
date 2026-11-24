@@ -1,0 +1,38 @@
+{
+  "workload_sha256": "a2790b443e9a0ba14deedf4b683e64f75450b7db35fa2bc35a11c10b650a111b",
+  "paired_requests": 1200,
+  "afd_lower_ttft_requests": 1174,
+  "ep8_mean_ttft_s": 3.013410341228979,
+  "afd_mean_ttft_s": 1.5088983868031451,
+  "reduction_pct": 49.92721813691789,
+  "buckets": [
+    {
+      "input_bucket": "1–4K",
+      "requests": 293,
+      "ep8_mean_s": 2.3860334449291942,
+      "afd_mean_s": 0.9670961253065298,
+      "reduction_pct": 59.46845894546007
+    },
+    {
+      "input_bucket": "4–8K",
+      "requests": 329,
+      "ep8_mean_s": 2.5682249236115933,
+      "afd_mean_s": 1.1647880766937073,
+      "reduction_pct": 54.64618125986755
+    },
+    {
+      "input_bucket": "8–16K",
+      "requests": 359,
+      "ep8_mean_s": 3.2191397710067733,
+      "afd_mean_s": 1.600983847581203,
+      "reduction_pct": 50.26671839475607
+    },
+    {
+      "input_bucket": "16–32K",
+      "requests": 219,
+      "ep8_mean_s": 4.184326175574775,
+      "afd_mean_s": 2.599773611575705,
+      "reduction_pct": 37.868763034024454
+    }
+  ]
+}

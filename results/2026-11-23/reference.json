@@ -1,0 +1,700 @@
+{
+  "baseline": {
+    "run": "baseline",
+    "workload_sha256": "a2790b443e9a0ba14deedf4b683e64f75450b7db35fa2bc35a11c10b650a111b",
+    "scheduling_policy": "fixed-slot-order, dependency-checked",
+    "completed": 1200,
+    "observed_rps": 3.999994737448708,
+    "missed_slots_for_dependency": 0,
+    "input_tokens_per_second": 40109.293941267555,
+    "request_throughput": 3.931167065587433,
+    "mean_ttft_ms": 3013.410341228979,
+    "p95_ttft_ms": 4888.395007606596,
+    "ttft_quarter_means_ms": [
+      2847.9913965550563,
+      3031.5683282911777,
+      3034.690881514301,
+      3139.3907585553825
+    ],
+    "inflight_at_last_send": 16,
+    "decoder_kv_transfers": 1200,
+    "decoder_external_kv_tokens": 12031604,
+    "decoder_warmup_transfers_in_log_window": 0,
+    "p_request_phase_metrics": {
+      "queue": {
+        "requests": 1200,
+        "mean_ms": 366.17703546614695
+      },
+      "prefill": {
+        "requests": 1200,
+        "mean_ms": 2007.272445964627
+      }
+    },
+    "p_peak_waiting_by_engine": {
+      "p0-window:000": 2,
+      "p0-window:001": 2,
+      "p1-window:000": 3,
+      "p1-window:001": 2
+    },
+    "p_waiting_timeseries": [
+      {
+        "time": "10:50:03",
+        "waiting": 0
+      },
+      {
+        "time": "10:50:04",
+        "waiting": 0
+      },
+      {
+        "time": "10:50:13",
+        "waiting": 0
+      },
+      {
+        "time": "10:50:14",
+        "waiting": 0
+      },
+      {
+        "time": "10:50:23",
+        "waiting": 1
+      },
+      {
+        "time": "10:50:24",
+        "waiting": 1
+      },
+      {
+        "time": "10:50:33",
+        "waiting": 0
+      },
+      {
+        "time": "10:50:34",
+        "waiting": 0
+      },
+      {
+        "time": "10:50:43",
+        "waiting": 2
+      },
+      {
+        "time": "10:50:44",
+        "waiting": 3
+      },
+      {
+        "time": "10:50:53",
+        "waiting": 1
+      },
+      {
+        "time": "10:50:54",
+        "waiting": 0
+      },
+      {
+        "time": "10:51:03",
+        "waiting": 1
+      },
+      {
+        "time": "10:51:04",
+        "waiting": 2
+      },
+      {
+        "time": "10:51:13",
+        "waiting": 2
+      },
+      {
+        "time": "10:51:14",
+        "waiting": 1
+      },
+      {
+        "time": "10:51:23",
+        "waiting": 1
+      },
+      {
+        "time": "10:51:24",
+        "waiting": 4
+      },
+      {
+        "time": "10:51:33",
+        "waiting": 4
+      },
+      {
+        "time": "10:51:34",
+        "waiting": 2
+      },
+      {
+        "time": "10:51:43",
+        "waiting": 1
+      },
+      {
+        "time": "10:51:44",
+        "waiting": 0
+      },
+      {
+        "time": "10:51:53",
+        "waiting": 2
+      },
+      {
+        "time": "10:51:54",
+        "waiting": 2
+      },
+      {
+        "time": "10:52:03",
+        "waiting": 0
+      },
+      {
+        "time": "10:52:04",
+        "waiting": 1
+      },
+      {
+        "time": "10:52:13",
+        "waiting": 2
+      },
+      {
+        "time": "10:52:14",
+        "waiting": 1
+      },
+      {
+        "time": "10:52:23",
+        "waiting": 1
+      },
+      {
+        "time": "10:52:24",
+        "waiting": 2
+      },
+      {
+        "time": "10:52:33",
+        "waiting": 4
+      },
+      {
+        "time": "10:52:34",
+        "waiting": 5
+      },
+      {
+        "time": "10:52:43",
+        "waiting": 2
+      },
+      {
+        "time": "10:52:44",
+        "waiting": 0
+      },
+      {
+        "time": "10:52:53",
+        "waiting": 0
+      },
+      {
+        "time": "10:52:54",
+        "waiting": 0
+      },
+      {
+        "time": "10:53:03",
+        "waiting": 0
+      },
+      {
+        "time": "10:53:04",
+        "waiting": 0
+      },
+      {
+        "time": "10:53:13",
+        "waiting": 0
+      },
+      {
+        "time": "10:53:14",
+        "waiting": 0
+      },
+      {
+        "time": "10:53:23",
+        "waiting": 0
+      },
+      {
+        "time": "10:53:24",
+        "waiting": 1
+      },
+      {
+        "time": "10:53:33",
+        "waiting": 5
+      },
+      {
+        "time": "10:53:34",
+        "waiting": 6
+      },
+      {
+        "time": "10:53:43",
+        "waiting": 4
+      },
+      {
+        "time": "10:53:44",
+        "waiting": 3
+      },
+      {
+        "time": "10:53:53",
+        "waiting": 1
+      },
+      {
+        "time": "10:53:54",
+        "waiting": 0
+      },
+      {
+        "time": "10:54:03",
+        "waiting": 1
+      },
+      {
+        "time": "10:54:04",
+        "waiting": 4
+      },
+      {
+        "time": "10:54:13",
+        "waiting": 6
+      },
+      {
+        "time": "10:54:14",
+        "waiting": 3
+      },
+      {
+        "time": "10:54:23",
+        "waiting": 2
+      },
+      {
+        "time": "10:54:24",
+        "waiting": 2
+      },
+      {
+        "time": "10:54:33",
+        "waiting": 0
+      },
+      {
+        "time": "10:54:34",
+        "waiting": 1
+      },
+      {
+        "time": "10:54:43",
+        "waiting": 1
+      },
+      {
+        "time": "10:54:44",
+        "waiting": 0
+      },
+      {
+        "time": "10:54:53",
+        "waiting": 1
+      },
+      {
+        "time": "10:54:54",
+        "waiting": 3
+      },
+      {
+        "time": "10:55:03",
+        "waiting": 4
+      },
+      {
+        "time": "10:55:04",
+        "waiting": 3
+      }
+    ],
+    "arrival_windows": [
+      {
+        "first_slot": 0,
+        "seconds": 25.0019043777138,
+        "sent": 100,
+        "completed": 93,
+        "input_tokens_sent_per_second": 37151.92994770332,
+        "input_tokens_completed_per_second": 34709.35601103809,
+        "inflight_at_end": 7,
+        "mean_ttft_ms": 2543.542302325368
+      },
+      {
+        "first_slot": 100,
+        "seconds": 24.998598953709006,
+        "sent": 100,
+        "completed": 97,
+        "input_tokens_sent_per_second": 39460.33143003966,
+        "input_tokens_completed_per_second": 38530.23930595483,
+        "inflight_at_end": 10,
+        "mean_ttft_ms": 2965.612819623202
+      },
+      {
+        "first_slot": 200,
+        "seconds": 24.999998047947884,
+        "sent": 100,
+        "completed": 98,
+        "input_tokens_sent_per_second": 40818.12318716415,
+        "input_tokens_completed_per_second": 39140.48305617051,
+        "inflight_at_end": 12,
+        "mean_ttft_ms": 3034.8190677165985
+      },
+      {
+        "first_slot": 300,
+        "seconds": 25.000065891072154,
+        "sent": 100,
+        "completed": 104,
+        "input_tokens_sent_per_second": 37941.77999901746,
+        "input_tokens_completed_per_second": 38981.81725785066,
+        "inflight_at_end": 8,
+        "mean_ttft_ms": 2683.3981384523213
+      },
+      {
+        "first_slot": 400,
+        "seconds": 25.000313986092806,
+        "sent": 100,
+        "completed": 94,
+        "input_tokens_sent_per_second": 40339.773354887184,
+        "input_tokens_completed_per_second": 39814.979946000465,
+        "inflight_at_end": 14,
+        "mean_ttft_ms": 3184.545249119401
+      },
+      {
+        "first_slot": 500,
+        "seconds": 25.000161211937666,
+        "sent": 100,
+        "completed": 99,
+        "input_tokens_sent_per_second": 42811.16393317234,
+        "input_tokens_completed_per_second": 40909.61619526016,
+        "inflight_at_end": 15,
+        "mean_ttft_ms": 3226.761597301811
+      },
+      {
+        "first_slot": 600,
+        "seconds": 24.999830855056643,
+        "sent": 100,
+        "completed": 102,
+        "input_tokens_sent_per_second": 39644.94822970091,
+        "input_tokens_completed_per_second": 39963.830387193084,
+        "inflight_at_end": 13,
+        "mean_ttft_ms": 2801.761577632278
+      },
+      {
+        "first_slot": 700,
+        "seconds": 25.000275176018476,
+        "sent": 100,
+        "completed": 99,
+        "input_tokens_sent_per_second": 38791.65301869489,
+        "input_tokens_completed_per_second": 39129.92929527413,
+        "inflight_at_end": 14,
+        "mean_ttft_ms": 2972.2632890939713
+      },
+      {
+        "first_slot": 800,
+        "seconds": 24.999528942629695,
+        "sent": 100,
+        "completed": 102,
+        "input_tokens_sent_per_second": 41084.33412313571,
+        "input_tokens_completed_per_second": 42662.04385080753,
+        "inflight_at_end": 12,
+        "mean_ttft_ms": 3330.0477778166533
+      },
+      {
+        "first_slot": 900,
+        "seconds": 24.999735007062554,
+        "sent": 100,
+        "completed": 99,
+        "input_tokens_sent_per_second": 41054.71516838274,
+        "input_tokens_completed_per_second": 37922.96197268359,
+        "inflight_at_end": 13,
+        "mean_ttft_ms": 3038.8574485108256
+      },
+      {
+        "first_slot": 1000,
+        "seconds": 25.00087315030396,
+        "sent": 100,
+        "completed": 100,
+        "input_tokens_sent_per_second": 38239.064461969676,
+        "input_tokens_completed_per_second": 39345.625814194434,
+        "inflight_at_end": 13,
+        "mean_ttft_ms": 2888.069691043347
+      },
+      {
+        "first_slot": 1100,
+        "seconds": 24.99910876341164,
+        "sent": 100,
+        "completed": 97,
+        "input_tokens_sent_per_second": 43974.127654060256,
+        "input_tokens_completed_per_second": 41677.44577858349,
+        "inflight_at_end": 16,
+        "mean_ttft_ms": 3491.2451361119747
+      }
+    ]
+  },
+  "afd": {
+    "run": "afd",
+    "workload_sha256": "a2790b443e9a0ba14deedf4b683e64f75450b7db35fa2bc35a11c10b650a111b",
+    "scheduling_policy": "fixed-slot-order, dependency-checked",
+    "completed": 1200,
+    "observed_rps": 3.9999857555100085,
+    "missed_slots_for_dependency": 0,
+    "input_tokens_per_second": 40109.203951398034,
+    "request_throughput": 3.9605888120108457,
+    "mean_ttft_ms": 1508.8983868031453,
+    "p95_ttft_ms": 3027.6781254447997,
+    "ttft_quarter_means_ms": [
+      1485.8008276422818,
+      1565.2379919091861,
+      1464.0635626763105,
+      1520.4911649848025
+    ],
+    "inflight_at_last_send": 9,
+    "decoder_kv_transfers": 1200,
+    "decoder_external_kv_tokens": 12031604,
+    "decoder_warmup_transfers_in_log_window": 1,
+    "p_request_phase_metrics": {
+      "queue": {
+        "requests": 1200,
+        "mean_ms": 0.04094438937803109
+      },
+      "prefill": {
+        "requests": 1200,
+        "mean_ms": 1153.805360166977
+      }
+    },
+    "p_peak_waiting_by_engine": {
+      "prefill_attention_node0-window:000": 0,
+      "prefill_attention_node0-window:001": 0,
+      "prefill_attention_node0-window:002": 0,
+      "prefill_attention_node0-window:003": 0,
+      "prefill_attention_node0-window:004": 0,
+      "prefill_attention_node0-window:005": 0
+    },
+    "p_waiting_timeseries": [
+      {
+        "time": "11:02:29",
+        "waiting": 0
+      },
+      {
+        "time": "11:02:39",
+        "waiting": 0
+      },
+      {
+        "time": "11:02:49",
+        "waiting": 0
+      },
+      {
+        "time": "11:02:59",
+        "waiting": 0
+      },
+      {
+        "time": "11:03:09",
+        "waiting": 0
+      },
+      {
+        "time": "11:03:19",
+        "waiting": 0
+      },
+      {
+        "time": "11:03:29",
+        "waiting": 0
+      },
+      {
+        "time": "11:03:39",
+        "waiting": 0
+      },
+      {
+        "time": "11:03:49",
+        "waiting": 0
+      },
+      {
+        "time": "11:03:59",
+        "waiting": 0
+      },
+      {
+        "time": "11:04:09",
+        "waiting": 0
+      },
+      {
+        "time": "11:04:19",
+        "waiting": 0
+      },
+      {
+        "time": "11:04:29",
+        "waiting": 0
+      },
+      {
+        "time": "11:04:39",
+        "waiting": 0
+      },
+      {
+        "time": "11:04:49",
+        "waiting": 0
+      },
+      {
+        "time": "11:04:59",
+        "waiting": 0
+      },
+      {
+        "time": "11:05:09",
+        "waiting": 0
+      },
+      {
+        "time": "11:05:19",
+        "waiting": 0
+      },
+      {
+        "time": "11:05:29",
+        "waiting": 0
+      },
+      {
+        "time": "11:05:39",
+        "waiting": 0
+      },
+      {
+        "time": "11:05:49",
+        "waiting": 0
+      },
+      {
+        "time": "11:05:59",
+        "waiting": 0
+      },
+      {
+        "time": "11:06:09",
+        "waiting": 0
+      },
+      {
+        "time": "11:06:19",
+        "waiting": 0
+      },
+      {
+        "time": "11:06:29",
+        "waiting": 0
+      },
+      {
+        "time": "11:06:39",
+        "waiting": 0
+      },
+      {
+        "time": "11:06:49",
+        "waiting": 0
+      },
+      {
+        "time": "11:06:59",
+        "waiting": 0
+      },
+      {
+        "time": "11:07:09",
+        "waiting": 0
+      },
+      {
+        "time": "11:07:19",
+        "waiting": 0
+      }
+    ],
+    "arrival_windows": [
+      {
+        "first_slot": 0,
+        "seconds": 25.000809403136373,
+        "sent": 100,
+        "completed": 96,
+        "input_tokens_sent_per_second": 37153.55711177385,
+        "input_tokens_completed_per_second": 35403.93375779906,
+        "inflight_at_end": 4,
+        "mean_ttft_ms": 1368.202282693237
+      },
+      {
+        "first_slot": 100,
+        "seconds": 24.999479873105884,
+        "sent": 100,
+        "completed": 101,
+        "input_tokens_sent_per_second": 39458.94094625598,
+        "input_tokens_completed_per_second": 40272.11786446338,
+        "inflight_at_end": 3,
+        "mean_ttft_ms": 1540.5008837021887
+      },
+      {
+        "first_slot": 200,
+        "seconds": 25.00176222808659,
+        "sent": 100,
+        "completed": 99,
+        "input_tokens_sent_per_second": 40815.242969299135,
+        "input_tokens_completed_per_second": 40473.26707488018,
+        "inflight_at_end": 4,
+        "mean_ttft_ms": 1548.6993165314198
+      },
+      {
+        "first_slot": 300,
+        "seconds": 24.998449748381972,
+        "sent": 100,
+        "completed": 100,
+        "input_tokens_sent_per_second": 37944.232924339434,
+        "input_tokens_completed_per_second": 36666.83371273165,
+        "inflight_at_end": 4,
+        "mean_ttft_ms": 1627.9461160674691
+      },
+      {
+        "first_slot": 400,
+        "seconds": 25.00009724870324,
+        "sent": 100,
+        "completed": 100,
+        "input_tokens_sent_per_second": 40340.123079013676,
+        "input_tokens_completed_per_second": 40712.40163086942,
+        "inflight_at_end": 4,
+        "mean_ttft_ms": 1459.0779804065824
+      },
+      {
+        "first_slot": 500,
+        "seconds": 24.999990729615092,
+        "sent": 100,
+        "completed": 96,
+        "input_tokens_sent_per_second": 42811.455875146974,
+        "input_tokens_completed_per_second": 42290.935682130075,
+        "inflight_at_end": 8,
+        "mean_ttft_ms": 1608.6898792535067
+      },
+      {
+        "first_slot": 600,
+        "seconds": 25.00063918530941,
+        "sent": 100,
+        "completed": 100,
+        "input_tokens_sent_per_second": 39643.66641403268,
+        "input_tokens_completed_per_second": 38945.96425247156,
+        "inflight_at_end": 8,
+        "mean_ttft_ms": 1538.7336600385606
+      },
+      {
+        "first_slot": 700,
+        "seconds": 25.000036800280213,
+        "sent": 100,
+        "completed": 103,
+        "input_tokens_sent_per_second": 38792.022897707495,
+        "input_tokens_completed_per_second": 39539.42179752793,
+        "inflight_at_end": 5,
+        "mean_ttft_ms": 1350.3370092995465
+      },
+      {
+        "first_slot": 800,
+        "seconds": 24.999516304582357,
+        "sent": 100,
+        "completed": 99,
+        "input_tokens_sent_per_second": 41084.354892567935,
+        "input_tokens_completed_per_second": 41487.36268988893,
+        "inflight_at_end": 6,
+        "mean_ttft_ms": 1503.1200186908245
+      },
+      {
+        "first_slot": 900,
+        "seconds": 24.999817330390215,
+        "sent": 100,
+        "completed": 99,
+        "input_tokens_sent_per_second": 41054.579976964174,
+        "input_tokens_completed_per_second": 39508.448679716144,
+        "inflight_at_end": 7,
+        "mean_ttft_ms": 1397.467535417527
+      },
+      {
+        "first_slot": 1000,
+        "seconds": 25.000356387346983,
+        "sent": 100,
+        "completed": 101,
+        "input_tokens_sent_per_second": 38239.85487198293,
+        "input_tokens_completed_per_second": 38067.81732446313,
+        "inflight_at_end": 6,
+        "mean_ttft_ms": 1419.5001838728786
+      },
+      {
+        "first_slot": 1100,
+        "seconds": 25.000112211331725,
+        "sent": 100,
+        "completed": 97,
+        "input_tokens_sent_per_second": 43972.3626321052,
+        "input_tokens_completed_per_second": 42609.08875109631,
+        "inflight_at_end": 9,
+        "mean_ttft_ms": 1744.5057756640017
+      }
+    ]
+  },
+  "identical_send_order": true,
+  "acceptance_ceiling_ms": 2410.7282729831836,
+  "reduction_pct": 49.92721813691789,
+  "ttft_gate_passed": true
+}

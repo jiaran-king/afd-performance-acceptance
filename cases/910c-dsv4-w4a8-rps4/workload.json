@@ -1,0 +1,93 @@
+{
+  "archive": "moonconv-wildchat-v4-flash-prefill bundle 8ab206ac9f01",
+  "archive_files_sha256": {
+    "source_manifest.json": "598e5a103d04a94b5de47647ca1c8cb4f39b9ad25b733b6ed52aa1a60e36d63d",
+    "selection/mapping.jsonl": "cce77faf0841c5572b9bf796e183a9cff3f365d5ad61bbb7c3de2d7aa31aaa75",
+    "workloads/formal_0_requests.jsonl": "b9a1c31e74345273010a08d238cb18ecca6f941a9afe6d7e7a14f730266c3142",
+    "workloads/formal_1_requests.jsonl": "47eeb562ae64438888a1b5c91cf30c02eee6a0edeb9cde14e95a08a86ba5943d",
+    "workloads/formal_2_requests.jsonl": "c0ddfbb458552786672456f789bd69f79f8911cfeaed5278ba0d239a96a71656"
+  },
+  "tokenizer_sha256": "8f9f37ca37fdc4f5fd36d5cf4d3b0e8392edb4e894fd10cc0d70b4957c8633cf",
+  "source_dataset": "allenai/WildChat-4.8M",
+  "source_revision": "c827c6df8fcf008219ffaffa4d1dd77491099367",
+  "source_sessions_under_cap": 1071,
+  "min_input_tokens": 1024,
+  "input_cap": 32768,
+  "selection_seed": 20261123,
+  "selection": "Sample unique archive conversations before any timings and allocate length-stratified 50-session cohorts",
+  "turns": "Last two successive user turns in each archived V4 conversation prefix. The earlier prompt ends with its original V4 generation suffix. Later history uses the original response.",
+  "schedule": "250 ms slots in a fixed order. After the initial first-turn cohort, interleave its successors with first turns from the next cohort. Later turns require the earlier request to finish.",
+  "splits": {
+    "qualification": {
+      "sessions": 200,
+      "requests": 400,
+      "requests_sha256": "ace2a4c6373d6805ce30aaf0e7696ca72f7d0be3804d551a595b9aa8a83792d1",
+      "min_input_tokens": 1079,
+      "mean_input_tokens": 9712.0275,
+      "median_input_tokens": 7729.0,
+      "p95_input_tokens": 25921.15,
+      "max_input_tokens": 30565,
+      "target_rps": 4,
+      "offered_input_tokens_per_second": 38848.11,
+      "scheduled_turn_gap_sec": [
+        12.5,
+        24.75
+      ],
+      "scheduled_input_tokens_per_second_by_25s_window": [
+        37466.64,
+        39252.96,
+        39214.12,
+        39458.72
+      ]
+    },
+    "formal_candidate": {
+      "sessions": 600,
+      "requests": 1200,
+      "requests_sha256": "a2790b443e9a0ba14deedf4b683e64f75450b7db35fa2bc35a11c10b650a111b",
+      "min_input_tokens": 1024,
+      "mean_input_tokens": 10027.336666666666,
+      "median_input_tokens": 7783.0,
+      "p95_input_tokens": 26694.9,
+      "max_input_tokens": 32759,
+      "target_rps": 4,
+      "offered_input_tokens_per_second": 40109.346666666665,
+      "scheduled_turn_gap_sec": [
+        12.5,
+        24.75
+      ],
+      "scheduled_input_tokens_per_second_by_25s_window": [
+        37154.76,
+        39458.12,
+        40818.12,
+        37941.88,
+        40340.28,
+        42811.44,
+        39644.68,
+        38792.08,
+        41083.56,
+        41054.28,
+        38240.4,
+        43972.56
+      ]
+    },
+    "warmup": {
+      "sessions": 8,
+      "requests": 16,
+      "requests_sha256": "e9d0ac33bcc10538e2b0f39b25dcd1298cb897a9b9114770035c9ef3b0965b14",
+      "min_input_tokens": 1289,
+      "mean_input_tokens": 9345.8125,
+      "median_input_tokens": 6306.5,
+      "p95_input_tokens": 22266.0,
+      "max_input_tokens": 22917,
+      "target_rps": 4,
+      "offered_input_tokens_per_second": 37383.25,
+      "scheduled_turn_gap_sec": [
+        2.0,
+        2.0
+      ],
+      "scheduled_input_tokens_per_second_by_25s_window": [
+        37383.25
+      ]
+    }
+  }
+}

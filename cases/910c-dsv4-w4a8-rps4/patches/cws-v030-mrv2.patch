@@ -1,0 +1,682 @@
+From 8def0e127aee3c71a087e27a3c4dc162359e2733 Mon Sep 17 00:00:00 2001
+From: Zhou ziheng <jiaranran2@gmail.com>
+Date: Mon, 19 Oct 2026 11:05:32 +0800
+Subject: [PATCH] feat: port DSV4 compressor tail workspace to vLLM 0.30 MRV2
+
+Adapt fixed private C4/C128 tail rings to the current KV spec registry,
+uniform scheduler cache planning and CircularBufferManager lifecycle.
+Preserve immutable invocation history before tail overwrite and logical
+SCFA page order. Keep CWS opt-in with CONTINUOUS as the disabled path.
+
+Ported from vllm-project/vllm-ascend#15452, with history and page-order
+repairs from jiangkuaixue123/vllm-ascend#3 and
+jiangkuaixue123/vllm-ascend#4. Prefix checkpoints are
+outside this port. Native bytes and runtime Python ASTs match the A3
+device-tested implementation; submission cleanup only changes Python
+formatting and test import order.
+
+Signed-off-by: Zhou ziheng <jiaranran2@gmail.com>
+---
+ .../op_host/arch32/compressor_tiling.cpp      |  26 +++-
+ .../op_host/arch32/compressor_tiling.h        |   2 +-
+ .../arch32/compressor_block_vec_perf.h        |  87 +++++++++++-
+ .../op_kernel/arch32/compressor_comm.h        |   6 +-
+ .../op_kernel/arch32/compressor_kernel_perf.h |   7 +
+ .../arch32/compressor_template_tiling_key.h   |   4 +-
+ .../compressor/op_kernel/compressor.cpp       |   4 +-
+ .../sparse_attn_sharedkv_scfa_block_vector.h  |   2 +
+ tests/ut/core/test_circular_buffer.py         |  74 ++++++++++
+ vllm_ascend/ascend_config.py                  |  12 ++
+ vllm_ascend/core/compressor_tail.py           | 133 ++++++++++++++++++
+ vllm_ascend/core/kv_cache_interface.py        |   7 +
+ vllm_ascend/models/deepseek_v4/compressor.py  |  18 ++-
+ 13 files changed, 364 insertions(+), 18 deletions(-)
+ create mode 100644 vllm_ascend/core/compressor_tail.py
+
+diff --git a/csrc/attention/compressor/op_host/arch32/compressor_tiling.cpp b/csrc/attention/compressor/op_host/arch32/compressor_tiling.cpp
+index 69c9307..1d5c4ea 100644
+--- a/csrc/attention/compressor/op_host/arch32/compressor_tiling.cpp
++++ b/csrc/attention/compressor/op_host/arch32/compressor_tiling.cpp
+@@ -165,10 +165,9 @@ ge::graphStatus CompressorTiling::SetPageAttentionInfo()
+ {
+     pageAttentionParams_->blockNum = context_->stateCache.shape->GetStorageShape().GetDim(COMPRESSOR_DIM_INDEX_0);
+     pageAttentionParams_->blockSize = context_->stateCache.shape->GetStorageShape().GetDim(COMPRESSOR_DIM_INDEX_1);
+-    if (static_cast<uint8_t>(*context_->cacheMode) == static_cast<uint8_t>(CACHE_MODE::CONTINUOUS)) {
+-        pageAttentionParams_->maxBlockNumPerBatch =
+-            context_->stateBlockTable.shape->GetStorageShape().GetDim(COMPRESSOR_DIM_INDEX_1);
+-    }
++    const auto &tableShape = context_->stateBlockTable.shape->GetStorageShape();
++    pageAttentionParams_->maxBlockNumPerBatch =
++        tableShape.GetDimNum() == 1 ? 1 : tableShape.GetDim(COMPRESSOR_DIM_INDEX_1);
+ 
+     return ge::GRAPH_SUCCESS;
+ }
+@@ -269,6 +268,10 @@ ge::graphStatus CompressorTiling::CalcWorkSpace()
+         workspaceParams_->vec1TailCacheSize * MM1_RES_ELEM_SIZE * workspaceParams_->dbWorkspaceRatio * 2; // 2 kv和score
+     workspaceSize_ +=
+         workspaceParams_->vec1ResSize * maxGroupNum * V1_RES_ELEM_SIZE * workspaceParams_->dbWorkspaceRatio;
++    if (static_cast<uint8_t>(*context_->cacheMode) == static_cast<uint8_t>(CACHE_MODE::CYCLE)) {
++        workspaceSize_ += static_cast<uint64_t>(baseParams_->batchSize) * coff * baseParams_->cmpRatio *
++                          2 * coff * baseParams_->headDim * MM1_RES_ELEM_SIZE;
++    }
+ 
+     if (context_->workSpaces) {
+         context_->workSpaces[0] = workspaceSize_;
+@@ -814,6 +817,21 @@ ge::graphStatus CompressorTiling::CheckFeature() const
+         return ge::GRAPH_FAILED);
+     uint64_t cacheStride =
+         context_->stateCache.shape->GetShape().GetDim(1) * context_->stateCache.shape->GetShape().GetDim(2);
++    if (static_cast<uint8_t>(*context_->cacheMode) == static_cast<uint8_t>(CACHE_MODE::CYCLE)) {
++        // Match the pinned A3 template set used by the serving path.
++        OP_CHECK_IF(context_->layout != LayoutType::LAYOUT_TH,
++                    OP_LOGE(context_->opName, "A3 fixed-tail CYCLE requires packed TH inputs"),
++                    return ge::GRAPH_FAILED);
++        const uint32_t tailTokens = coff * baseParams_->cmpRatio;
++        const uint32_t ringBlocks =
++            (tailTokens + pageAttentionParams_->blockSize - 1) / pageAttentionParams_->blockSize;
++        OP_CHECK_IF(pageAttentionParams_->maxBlockNumPerBatch < ringBlocks,
++                    OP_LOGE(context_->opName, "CYCLE block-table row must contain at least %u ring pages", ringBlocks),
++                    return ge::GRAPH_FAILED);
++        OP_CHECK_IF(pageAttentionParams_->blockNum < baseParams_->batchSize * ringBlocks,
++                    OP_LOGE(context_->opName, "CYCLE state pool is too small for private request rings"),
++                    return ge::GRAPH_FAILED);
++    }
+     OP_CHECK_IF(baseParams_->stateCacheStrideDim0 < cacheStride,
+                 OP_LOGE(context_->opName,
+                         "state_cache first axis stride should not be less than the contiguous stride %u, but got %u",
+diff --git a/csrc/attention/compressor/op_host/arch32/compressor_tiling.h b/csrc/attention/compressor/op_host/arch32/compressor_tiling.h
+index 49b90ab..583822a 100644
+--- a/csrc/attention/compressor/op_host/arch32/compressor_tiling.h
++++ b/csrc/attention/compressor/op_host/arch32/compressor_tiling.h
+@@ -231,7 +231,7 @@ const std::vector<int> CMP_RATIO {2, 4, 8, 16, 32, 64, 128};
+ const std::vector<int> ROTARY_MODE {1, 2};
+ #endif
+ const std::vector<uint32_t> HEAD_DIM {128, 512};
+-const std::vector<int> CACHE_MODE {1};
++const std::vector<int> CACHE_MODE {1, 2};
+ 
+ enum class ROTARY_MODE:uint8_t {
+     HALF = 1,
+diff --git a/csrc/attention/compressor/op_kernel/arch32/compressor_block_vec_perf.h b/csrc/attention/compressor/op_kernel/arch32/compressor_block_vec_perf.h
+index 2398640..7980b30 100644
+--- a/csrc/attention/compressor/op_kernel/arch32/compressor_block_vec_perf.h
++++ b/csrc/attention/compressor/op_kernel/arch32/compressor_block_vec_perf.h
+@@ -77,6 +77,8 @@ public:
+                                                 GlobalTensor<T> kvCacheTcGm, GlobalTensor<T> scoreCacheTcGm,
+                                                 GlobalTensor<T> vec1ResGm, GlobalTensor<T> vec2InputGm);
+     __aicore__ inline void ComputeVec2(const Vec2RunInfo &info);
++    __aicore__ inline void InitHistoryWorkspace(__gm__ uint8_t *workspace);
++    __aicore__ inline void SnapshotHistory();
+ 
+ protected:
+     GlobalTensor<T> vec1ResGm_;
+@@ -211,6 +213,7 @@ private:
+     GlobalTensor<int32_t> sequsedGm_;
+     GlobalTensor<int32_t> stateBlockTableGm_;
+     GlobalTensor<T> stateCacheGm_;
++    GlobalTensor<T> historyStateGm_;
+     GlobalTensor<T> apeGm_;
+     GlobalTensor<T> normWeightGm_;
+     GlobalTensor<T> ropeSinGm_;
+@@ -348,6 +351,43 @@ __aicore__ inline uint32_t CompressorBlockVectorPerf<COMP>::GetSeqUsed(uint32_t
+     }
+ }
+ 
++template <typename COMP>
++__aicore__ inline void CompressorBlockVectorPerf<COMP>::InitHistoryWorkspace(__gm__ uint8_t *workspace)
++{
++    historyStateGm_.SetGlobalBuffer((__gm__ T *)workspace);
++}
++
++template <typename COMP>
++__aicore__ inline void CompressorBlockVectorPerf<COMP>::SnapshotHistory()
++{
++    if constexpr (COMP::cacheMode == CACHE_MODE::CYCLE) {
++        const uint32_t ringTokens = coff_ * constInfo_.cmpRatio;
++        const uint32_t rowElements = 2 * coff_ * constInfo_.headDim;
++        const uint32_t vectorCoreNum = 2 * GetBlockNum();
++        for (uint32_t row = GetBlockIdx(); row < constInfo_.batchSize * ringTokens; row += vectorCoreNum) {
++            const uint32_t batchIdx = row / ringTokens;
++            if (GetSeqLength(batchIdx) == 0 || GetStartPos(batchIdx) == 0) {
++                continue;
++            }
++            const uint32_t slot = row % ringTokens;
++            const uint64_t tableOffset = static_cast<uint64_t>(batchIdx) * constInfo_.maxBlockNumPerBatch;
++            const uint64_t page = stateBlockTableGm_.GetValue(tableOffset + slot / constInfo_.blockSize);
++            const uint64_t stateOffset = page * constInfo_.stateCacheStrideDim0 +
++                                         (slot % constInfo_.blockSize) * rowElements;
++            LocalTensor<T> inputUb = inputQue1.AllocTensor<T>();
++            DataCopy(inputUb, stateCacheGm_[stateOffset], rowElements);
++            inputQue1.EnQue(inputUb);
++            inputQue1.DeQue<T>();
++            DataCopyWithOutputQue(historyStateGm_[static_cast<uint64_t>(row) * rowElements], inputUb,
++                                  1, rowElements, rowElements, rowElements);
++            inputQue1.FreeTensor(inputUb);
++        }
++        // Complete the immutable invocation snapshot before any tail overwrite.
++        PipeBarrier<PIPE_ALL>();
++        SyncAll();
++    }
++}
++
+ template <typename COMP>
+ __aicore__ inline uint32_t CompressorBlockVectorPerf<COMP>::GetStartPos(uint32_t bIdx)
+ {
+@@ -780,10 +820,18 @@ __aicore__ inline void CompressorBlockVectorPerf<COMP>::ReadFromCacheState(
+     uint32_t copyFinishRowCnt = 0;
+     uint32_t seqCnt = endSeqIdx - startSeqIdx;
+     while (copyFinishRowCnt < seqCnt) {
+-        uint64_t blockIdOffset = curSeqIdx / constInfo_.blockSize;
+-        uint64_t remainRowCnt = curSeqIdx % constInfo_.blockSize;
++        uint32_t cacheSeqIdx = curSeqIdx;
++        const uint32_t ringTokenCount = coff_ * constInfo_.cmpRatio;
++        if constexpr (COMP::cacheMode == CACHE_MODE::CYCLE) {
++            cacheSeqIdx %= ringTokenCount;
++        }
++        uint64_t blockIdOffset = cacheSeqIdx / constInfo_.blockSize;
++        uint64_t remainRowCnt = cacheSeqIdx % constInfo_.blockSize;
+         uint64_t idInBlockTable = blockTableGm.GetValue(blockTablebaseOffset + blockIdOffset);
+         uint32_t copyRowCount = constInfo_.blockSize - remainRowCnt;
++        if constexpr (COMP::cacheMode == CACHE_MODE::CYCLE) {
++            copyRowCount = min(copyRowCount, ringTokenCount - cacheSeqIdx);
++        }
+         if (copyFinishRowCnt + copyRowCount > seqCnt) {
+             copyRowCount = seqCnt - copyFinishRowCnt;
+         }
+@@ -791,8 +839,16 @@ __aicore__ inline void CompressorBlockVectorPerf<COMP>::ReadFromCacheState(
+                                 remainRowCnt * 2 * coff_ * constInfo_.headDim +
+                                 stateIdx * coff_ * constInfo_.headDim + dStartIdx;
+ 
+-        DataCopyAlignGmToUb(output[copyFinishRowCnt * coff_ * dDealSize], state[stateOffset], copyRowCount,
+-                                dDealSize, coff_ * constInfo_.headDim * 2, coff_ * dDealSize);
++        if constexpr (COMP::cacheMode == CACHE_MODE::CYCLE) {
++            const uint64_t historyOffset =
++                (static_cast<uint64_t>(batchIdx) * ringTokenCount + cacheSeqIdx) * 2 * coff_ * constInfo_.headDim +
++                stateIdx * coff_ * constInfo_.headDim + dStartIdx;
++            DataCopyAlignGmToUb(output[copyFinishRowCnt * coff_ * dDealSize], historyStateGm_[historyOffset],
++                               copyRowCount, dDealSize, coff_ * constInfo_.headDim * 2, coff_ * dDealSize);
++        } else {
++            DataCopyAlignGmToUb(output[copyFinishRowCnt * coff_ * dDealSize], state[stateOffset], copyRowCount,
++                               dDealSize, coff_ * constInfo_.headDim * 2, coff_ * dDealSize);
++        }
+         copyFinishRowCnt += copyRowCount;
+         curSeqIdx += copyRowCount;
+     }
+@@ -808,10 +864,18 @@ __aicore__ inline void CompressorBlockVectorPerf<COMP>::WriteToCacheState(
+     uint32_t copyFinishRowCnt = 0;
+     uint32_t seqCnt = endSeqIdx - startSeqIdx;
+     while (copyFinishRowCnt < seqCnt) {
+-        uint64_t blockIdOffset = curSeqIdx / constInfo_.blockSize;
+-        uint64_t remainRowCnt = curSeqIdx % constInfo_.blockSize;
++        uint32_t cacheSeqIdx = curSeqIdx;
++        const uint32_t ringTokenCount = coff_ * constInfo_.cmpRatio;
++        if constexpr (COMP::cacheMode == CACHE_MODE::CYCLE) {
++            cacheSeqIdx %= ringTokenCount;
++        }
++        uint64_t blockIdOffset = cacheSeqIdx / constInfo_.blockSize;
++        uint64_t remainRowCnt = cacheSeqIdx % constInfo_.blockSize;
+         uint64_t idInBlockTable = blockTableGm.GetValue(blockTablebaseOffset + blockIdOffset);
+         uint32_t copyRowCount = constInfo_.blockSize - remainRowCnt;
++        if constexpr (COMP::cacheMode == CACHE_MODE::CYCLE) {
++            copyRowCount = min(copyRowCount, ringTokenCount - cacheSeqIdx);
++        }
+         if (copyFinishRowCnt + copyRowCount > seqCnt) {
+             copyRowCount = seqCnt - copyFinishRowCnt;
+         }
+@@ -838,6 +902,17 @@ CompressorBlockVectorPerf<COMP>::SaveState(const LocalTensor<T> &srcLocal, const
+     uint32_t endSeqIdx = startSeqIdx + sliceInfo.validSeqCnt;
+     uint64_t srcBaseOffset = sliceInfo.dealedSeqCnt * coff_ * dDealSize;
+ 
++    if constexpr (COMP::cacheMode == CACHE_MODE::CYCLE) {
++        uint32_t compressSeqIdx = Trunc(sliceInfo.bStartPos + sliceInfo.bSeqUsed, constInfo_.cmpRatio);
++        uint32_t writeSeqStartIdx = compressSeqIdx > (coff_ - 1) * constInfo_.cmpRatio ?
++                                    compressSeqIdx - (coff_ - 1) * constInfo_.cmpRatio : 0;
++        if (endSeqIdx <= writeSeqStartIdx) {
++            return;
++        }
++        srcBaseOffset += (max(startSeqIdx, writeSeqStartIdx) - startSeqIdx) * coff_ * dDealSize;
++        startSeqIdx = max(startSeqIdx, writeSeqStartIdx);
++    }
++
+     if constexpr (COMP::coff == COFF::OVERLAP) {
+         WriteToCacheState(stateGm, blockTableGm, srcLocal[srcBaseOffset], sliceInfo.bIdx, startSeqIdx, endSeqIdx,
+                           dStartIdx, dDealSize, stateIdx);
+diff --git a/csrc/attention/compressor/op_kernel/arch32/compressor_comm.h b/csrc/attention/compressor/op_kernel/arch32/compressor_comm.h
+index fc34c77..4eae56e 100644
+--- a/csrc/attention/compressor/op_kernel/arch32/compressor_comm.h
++++ b/csrc/attention/compressor/op_kernel/arch32/compressor_comm.h
+@@ -99,12 +99,14 @@ enum class TEMPLATE_ID : uint8_t {
+     FULL_LOAD = 2
+ };
+ 
+-template <X_LAYOUT X_L, X_DTYPE X_T, COFF C, ROTARY_MODE Rotary_Mode, typename... Args>
++template <X_LAYOUT X_L, X_DTYPE X_T, COFF C, ROTARY_MODE Rotary_Mode, CACHE_MODE Cache_Mode,
++          typename... Args>
+ struct COMPType {
+     static constexpr X_LAYOUT xLayout = X_L;
+     static constexpr X_DTYPE xDtype = X_T;
+     static constexpr COFF coff = C;
+     static constexpr ROTARY_MODE rotaryMode = Rotary_Mode;
++    static constexpr CACHE_MODE cacheMode = Cache_Mode;
+ };
+ 
+ struct LoopInfo {
+@@ -382,4 +384,4 @@ __aicore__ inline void DumpTensorForDim2(GlobalTensor<T> tensor, uint32_t desc,
+ }
+ 
+ } // namespace Compressor
+-#endif
+\ No newline at end of file
++#endif
+diff --git a/csrc/attention/compressor/op_kernel/arch32/compressor_kernel_perf.h b/csrc/attention/compressor/op_kernel/arch32/compressor_kernel_perf.h
+index bdc342d..1f82939 100644
+--- a/csrc/attention/compressor/op_kernel/arch32/compressor_kernel_perf.h
++++ b/csrc/attention/compressor/op_kernel/arch32/compressor_kernel_perf.h
+@@ -521,6 +521,9 @@ __aicore__ inline void CompressorKernelPerf<COMP>::InitWorkspace(__gm__ uint8_t
+     // vec2Input
+     vec2InputGm.SetGlobalBuffer(
+         (__gm__ VEC1_OUT_T *)(workspace + beforeVecOffset));
++    if constexpr (COMP::cacheMode == CACHE_MODE::CYCLE) {
++        blockVec_.InitHistoryWorkspace(workspace + offset);
++    }
+ }
+ 
+ template <typename COMP>
+@@ -661,6 +664,10 @@ __aicore__ inline void CompressorKernelPerf<COMP>::Process()
+     }
+     AllocEventID();
+ 
++    if ASCEND_IS_AIV {
++        blockVec_.SnapshotHistory();
++    }
++
+     BatchInfo batchInfo{};
+ 
+     RunInfo extraInfo[1];
+diff --git a/csrc/attention/compressor/op_kernel/arch32/compressor_template_tiling_key.h b/csrc/attention/compressor/op_kernel/arch32/compressor_template_tiling_key.h
+index 8cc5f7b..68f7a4d 100644
+--- a/csrc/attention/compressor/op_kernel/arch32/compressor_template_tiling_key.h
++++ b/csrc/attention/compressor/op_kernel/arch32/compressor_template_tiling_key.h
+@@ -41,13 +41,13 @@ ASCENDC_TPL_ARGS_DECL(compressor, // 算子唯一标识，与opType保持一致
+ 
+ ASCENDC_TPL_SEL(
+ 
+-    // A3场景: TH/BF16/interleave/continuous, 保留EMPTY_X与NORMAL
++    // A3场景: TH/BF16/interleave/continuous或cycle, 保留EMPTY_X与NORMAL
+     // （TH布局不会触发FULL_LOAD，新kernel已移除rope_dtype维度）
+     ASCENDC_TPL_ARGS_SEL(ASCENDC_TPL_UINT_SEL(X_LAYOUT, ASCENDC_TPL_UI_LIST, 1),
+                         ASCENDC_TPL_UINT_SEL(X_DTYPE, ASCENDC_TPL_UI_LIST, 0),
+                         ASCENDC_TPL_UINT_SEL(COFF, ASCENDC_TPL_UI_LIST, 1, 2),
+                         ASCENDC_TPL_UINT_SEL(ROTARY_MODE, ASCENDC_TPL_UI_LIST, 2),
+-                        ASCENDC_TPL_UINT_SEL(CACHE_MODE, ASCENDC_TPL_UI_LIST, 1),
++                        ASCENDC_TPL_UINT_SEL(CACHE_MODE, ASCENDC_TPL_UI_LIST, 1, 2),
+                         ASCENDC_TPL_UINT_SEL(TEMPLATE_ID, ASCENDC_TPL_UI_LIST, 0, 1),
+                         ASCENDC_TPL_TILING_STRUCT_SEL(optiling::CompressorTilingData)),
+ );
+diff --git a/csrc/attention/compressor/op_kernel/compressor.cpp b/csrc/attention/compressor/op_kernel/compressor.cpp
+index 74615e6..cef1bc1 100644
+--- a/csrc/attention/compressor/op_kernel/compressor.cpp
++++ b/csrc/attention/compressor/op_kernel/compressor.cpp
+@@ -65,9 +65,9 @@ __global__ __aicore__ void compressor(
+     constexpr auto cacheMode = static_cast<CACHE_MODE>(CacheMode);
+     #if (__CCE_AICORE__ == 220)
+         if constexpr (static_cast<TEMPLATE_ID>(TemplateId) == TEMPLATE_ID::FULL_LOAD) {
+-            INVOKE_COMPRESSOR_GENERAL_OP_IMPL(CompressorKernelFullLoad, xLayout, xDtype, coff, rotaryMode);
++            INVOKE_COMPRESSOR_GENERAL_OP_IMPL(CompressorKernelFullLoad, xLayout, xDtype, coff, rotaryMode, cacheMode);
+         } else {
+-            INVOKE_COMPRESSOR_GENERAL_OP_IMPL(CompressorKernelPerf, xLayout, xDtype, coff, rotaryMode);
++            INVOKE_COMPRESSOR_GENERAL_OP_IMPL(CompressorKernelPerf, xLayout, xDtype, coff, rotaryMode, cacheMode);
+         }
+     #else
+         if constexpr (static_cast<TEMPLATE_ID>(TemplateId) == TEMPLATE_ID::FULL_LOAD) {
+diff --git a/csrc/attention/sparse_attn_sharedkv/op_kernel/arch32/sparse_attn_sharedkv_scfa_block_vector.h b/csrc/attention/sparse_attn_sharedkv/op_kernel/arch32/sparse_attn_sharedkv_scfa_block_vector.h
+index bbce145..5e5cf04 100644
+--- a/csrc/attention/sparse_attn_sharedkv/op_kernel/arch32/sparse_attn_sharedkv_scfa_block_vector.h
++++ b/csrc/attention/sparse_attn_sharedkv/op_kernel/arch32/sparse_attn_sharedkv_scfa_block_vector.h
+@@ -610,7 +610,9 @@ __aicore__ inline void SASVectorBlock<SAST>::CopyInKv(int64_t &mte2Size, int64_t
+         keySrcStride = ((keyOffset1 > keyOffset2 ? (keyOffset1 - keyOffset2) :
+ 	                    (keyOffset2 - keyOffset1)) - constInfo.sparseBlockSize) * constInfo.headDim * sizeof(KV_T);
+     }
++    // A merged ascending-address DMA must not reverse logical sparse-index order.
+     if (unlikely(keySrcStride >= INT32_MAX || keySrcStride < 0 ||
++        (keyOffset2 >= 0 && keyOffset1 > keyOffset2) ||
+         realS2Idx1 + constInfo.sparseBlockSize >= s2IdLimit ||
+         realS2Idx2 + constInfo.sparseBlockSize >= s2IdLimit)) {
+         // stride溢出、stride为负数、s2超长等异常场景，还原成2条搬运指令
+diff --git a/tests/ut/core/test_circular_buffer.py b/tests/ut/core/test_circular_buffer.py
+index 795ce80..2f92499 100644
+--- a/tests/ut/core/test_circular_buffer.py
++++ b/tests/ut/core/test_circular_buffer.py
+@@ -1,5 +1,6 @@
+ # SPDX-License-Identifier: Apache-2.0
+ # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
++from dataclasses import replace
+ from types import SimpleNamespace
+ from unittest.mock import Mock
+ 
+@@ -7,15 +8,19 @@ import pytest
+ import torch
+ from vllm.v1.core.block_pool import BlockPool
+ from vllm.v1.core.kv_cache_manager import KVCacheManager
++from vllm.v1.core.kv_cache_utils import generate_scheduler_kv_cache_config
+ from vllm.v1.core.single_type_kv_cache_manager import CircularBufferManager
+ from vllm.v1.kv_cache_interface import (
+     CircularBufferSpec,
+     FullAttentionSpec,
++    KVCacheConfig,
+     KVCacheGroupSpec,
+     MambaSpec,
+     UniformTypeKVCacheSpecs,
+ )
++from vllm.v1.kv_cache_spec_registry import KVCacheSpecRegistry
+ 
++from vllm_ascend.core.compressor_tail import AscendCompressorTailSpec, CompressorTailManager
+ from vllm_ascend.core.kv_cache_interface import is_circular_kv_cache_spec, is_prefix_cacheable
+ from vllm_ascend.patch.platform.patch_kv_cache_coordinator import AscendHybridKVCacheCoordinator
+ from vllm_ascend.worker.block_table import BlockTable
+@@ -122,3 +127,72 @@ def test_ring_bypasses_position_to_page_mapping(draft):
+     else:
+         BlockTable.compute_slot_mapping(table, 1, Mock(), Mock())
+     assert mapping.tolist() == [-1] * 8
++
++
++@pytest.mark.parametrize("ratio,block_rows,tail_rows,pages", [(4, 8, 8, 1), (128, 32, 128, 4)])
++@pytest.mark.parametrize("zeroing", [False, True])
++def test_compressor_private_ring_lifetime_and_zeroing(ratio, block_rows, tail_rows, pages, zeroing):
++    spec = AscendCompressorTailSpec(
++        block_size=block_rows,
++        num_kv_heads=1,
++        head_size=2048 if ratio == 4 else 1024,
++        dtype=torch.float32,
++        sliding_window=tail_rows,
++        page_size_padded=131072,
++        tail_tokens=tail_rows,
++        ring_blocks_per_request=pages,
++    )
++    pool = BlockPool(2 * pages + 1, False, 128)
++    manager = CompressorTailManager(
++        spec,
++        pool,
++        enable_caching=False,
++        kv_cache_group_id=0,
++        scheduler_block_size=128,
++        needs_kv_cache_zeroing=zeroing,
++    )
++    first = manager.allocate_new_blocks("first", 32768, 32768)
++    second = manager.allocate_new_blocks("second", 891, 891)
++    assert {b.block_id for b in first}.isdisjoint(b.block_id for b in second)
++    expected = [b.block_id for b in first + second] if zeroing else []
++    assert manager.take_new_block_ids() == expected
++    assert manager.allocate_new_blocks("first", 63778, 63778) == []
++    manager.remove_skipped_blocks("first", 63778)
++    assert manager.req_to_blocks["first"] == first
++    held = manager.pop_blocks_for_free("first")
++    assert pool.get_num_free_blocks() == 0 and all(b.ref_cnt == 1 for b in held)
++    pool.free_blocks(reversed(held))
++    recycled = manager.allocate_new_blocks("third", 1, 1)
++    assert {b.block_id for b in recycled} == {b.block_id for b in first}
++    manager.free("second")
++    manager.free("third")
++    assert pool.get_num_free_blocks() == 2 * pages
++
++
++def test_compressor_uniform_tuple_keeps_distinct_page_widths():
++    main = AscendCompressorTailSpec(
++        block_size=8,
++        num_kv_heads=1,
++        head_size=2048,
++        dtype=torch.float32,
++        sliding_window=8,
++        page_size_padded=131072,
++        tail_tokens=8,
++        ring_blocks_per_request=1,
++    )
++    indexer = replace(main, head_size=512, page_size_padded=16640)
++    uniform = UniformTypeKVCacheSpecs.from_specs({"main": main, "indexer": indexer})
++    assert uniform is not None and uniform.page_size_bytes == 147712
++    assert uniform.max_num_blocks_per_req(None, 65536) == 1
++    assert not main.is_uniform_with_collection({"other": replace(main, tail_tokens=16, ring_blocks_per_request=2)})
++    KVCacheSpecRegistry.register(
++        kvcache_spec_cls=AscendCompressorTailSpec,
++        manager_class=CompressorTailManager,
++        uniform_type_base_spec=AscendCompressorTailSpec,
++    )
++    config = KVCacheConfig(5, [], [KVCacheGroupSpec(["main", "indexer"], uniform)])
++    scheduler_config = generate_scheduler_kv_cache_config([config])
++    assert scheduler_config.kv_cache_groups[0].kv_cache_spec == main
++    assert isinstance(config.kv_cache_groups[0].kv_cache_spec, UniformTypeKVCacheSpecs)
++    manager = KVCacheManager(scheduler_config, 65536, 128, 128, enable_caching=False)
++    assert isinstance(manager.coordinator.single_type_managers[0], CompressorTailManager)
+diff --git a/vllm_ascend/ascend_config.py b/vllm_ascend/ascend_config.py
+index a9eb969..3a6fbda 100644
+--- a/vllm_ascend/ascend_config.py
++++ b/vllm_ascend/ascend_config.py
+@@ -572,6 +572,8 @@ class AscendConfig:
+     enable_mc2_hierarchy_comm: bool = False  # deprecated, will be replaced by mc2_comm_alg = "hierarchy"
+     enable_reduce_sample: bool = False
+     enable_dsa_cp: bool = False
++    # Fixed private FP32 compressor tails and invocation-local workspace.
++    enable_dsv4_shared_compressor_workspace: bool = False
+     sfa_dcp_force_tmajor_restore: bool = False
+     enable_force_eplb: bool = False
+     enable_pcp_o_proj_weight_sharding: bool = False
+@@ -672,6 +674,16 @@ class AscendConfig:
+     # the max_num_batched_tokens that sequence-parallel writeback corrected).
+     def derive_and_validate(self, vllm_config: VllmConfig) -> AscendConfig:
+         vc = vllm_config
++        if self.enable_dsv4_shared_compressor_workspace:
++            if vc.model_config is None or vc.model_config.hf_text_config.model_type != "deepseek_v4":
++                raise ValueError("Shared compressor workspace requires DeepSeek-V4.")
++            if vc.cache_config.enable_prefix_caching or vc.speculative_config is not None:
++                raise ValueError("Shared compressor workspace requires prefix caching and speculative decoding off.")
++            if (
++                vc.parallel_config.decode_context_parallel_size != 1
++                or vc.parallel_config.prefill_context_parallel_size != 1
++            ):
++                raise ValueError("Shared compressor workspace requires PCP/DCP size one.")
+         if (
+             self.enable_force_eplb
+             and self.eplb_config.dynamic_eplb
+diff --git a/vllm_ascend/core/compressor_tail.py b/vllm_ascend/core/compressor_tail.py
+new file mode 100644
+index 0000000..a42cb5d
+--- /dev/null
++++ b/vllm_ascend/core/compressor_tail.py
+@@ -0,0 +1,133 @@
++# SPDX-License-Identifier: Apache-2.0
++# SPDX-FileCopyrightText: Copyright contributors to the vLLM project
++"""Fixed private state pages for the DeepSeek-V4 CYCLE compressor."""
++
++from collections.abc import Sequence
++from dataclasses import dataclass
++from typing import Self
++
++import torch
++from vllm.config import VllmConfig
++from vllm.utils.math_utils import cdiv
++from vllm.v1.core.kv_cache_utils import KVCacheBlock
++from vllm.v1.core.single_type_kv_cache_manager import CircularBufferManager
++from vllm.v1.kv_cache_interface import KVCacheSpec
++
++from vllm_ascend.core.kv_cache_interface import AscendSlidingWindowMLASpec
++
++
++@dataclass(frozen=True, kw_only=True)
++class AscendCompressorTailSpec(AscendSlidingWindowMLASpec):
++    """Keep the current storage-page layout but bound it to a private ring."""
++
++    tail_tokens: int
++    ring_blocks_per_request: int
++
++    def __post_init__(self) -> None:
++        if self.dtype != torch.float32:
++            raise ValueError("Compressor tails require FP32 state storage.")
++        if self.storage_block_size <= 0 or self.tail_tokens <= 0:
++            raise ValueError("Compressor tail and storage page must be positive.")
++        if self.ring_blocks_per_request != cdiv(self.tail_tokens, self.storage_block_size):
++            raise ValueError("Ring page count must cover exactly the persistent tail.")
++
++    @property
++    def is_circular(self) -> bool:
++        return True
++
++    @property
++    def prefix_cacheable(self) -> bool:
++        return False
++
++    @property
++    def uses_slot_mapping(self) -> bool:
++        return False
++
++    @property
++    def block_table_token_alignment(self) -> int | None:
++        return None
++
++    def max_admission_blocks_per_request(self, max_in_flight_tokens: int, max_model_len: int) -> int:
++        return self.ring_blocks_per_request
++
++    def max_memory_usage_bytes(self, vllm_config: VllmConfig) -> int:
++        return self.ring_blocks_per_request * self.page_size_bytes
++
++    def max_num_blocks_per_req(self, vllm_config: VllmConfig, max_len: int) -> int:
++        return self.ring_blocks_per_request
++
++    def is_uniform_with_collection(self, kv_cache_specs: dict[str, KVCacheSpec]) -> bool:
++        # Main and indexer states share a block table, with different page
++        # widths in the tuple. Uniformity concerns their allocation policy.
++        return all(
++            type(spec) is type(self)
++            and spec.block_size == self.block_size
++            and spec.storage_block_size == self.storage_block_size
++            and spec.tail_tokens == self.tail_tokens
++            and spec.ring_blocks_per_request == self.ring_blocks_per_request
++            and spec.dtype == self.dtype
++            and spec.model_version == self.model_version
++            and spec.prefix_cacheable == self.prefix_cacheable
++            and spec.uses_slot_mapping == self.uses_slot_mapping
++            for spec in kv_cache_specs.values()
++        )
++
++    @classmethod
++    def merge(cls, specs: list[Self]) -> Self:
++        if not specs or not all(isinstance(spec, cls) and spec == specs[0] for spec in specs):
++            raise ValueError("Compressor tails in one group must have identical layouts.")
++        return specs[0]
++
++
++class CompressorTailManager(CircularBufferManager):
++    """Reuse current ring lifecycle and deferred-free support for multiple pages."""
++
++    kv_cache_spec: AscendCompressorTailSpec
++
++    @property
++    def has_positionally_stable_blocks(self) -> bool:
++        return False
++
++    def _claim_ring_block(self, request_id: str) -> list[KVCacheBlock]:
++        req_blocks = self.req_to_blocks[request_id]
++        missing = self.kv_cache_spec.ring_blocks_per_request - len(req_blocks)
++        assert missing >= 0
++        if not missing:
++            return []
++        new_blocks = self.block_pool.get_new_blocks(missing)
++        req_blocks.extend(new_blocks)
++        if self._record_new_block_ids:
++            self.new_block_ids.extend(block.block_id for block in new_blocks)
++        return new_blocks
++
++    def get_num_blocks_to_allocate(
++        self,
++        request_id: str,
++        num_tokens: int,
++        new_computed_blocks: Sequence[KVCacheBlock],
++        total_computed_tokens: int,
++        num_local_computed_tokens: int,
++        num_tokens_main_model: int,
++        apply_admission_cap: bool = False,
++    ) -> int:
++        assert not new_computed_blocks, "Compressor state cannot adopt shared prefix pages."
++        return self.kv_cache_spec.ring_blocks_per_request - len(self.req_to_blocks.get(request_id, ()))
++
++    def add_local_computed_blocks(
++        self,
++        request_id: str,
++        new_computed_blocks: Sequence[KVCacheBlock],
++        num_local_computed_tokens: int,
++        num_external_computed_tokens: int,
++    ) -> None:
++        assert not new_computed_blocks and not num_external_computed_tokens
++        self.num_cached_block[request_id] = 0
++
++    def allocate_external_computed_blocks(
++        self,
++        request_id: str,
++        num_local_computed_tokens: int,
++        num_external_computed_tokens: int,
++    ) -> None:
++        assert not num_external_computed_tokens, "External compressor state restore is unsupported."
++        self._claim_ring_block(request_id)
+diff --git a/vllm_ascend/core/kv_cache_interface.py b/vllm_ascend/core/kv_cache_interface.py
+index 5459385..76d382d 100644
+--- a/vllm_ascend/core/kv_cache_interface.py
++++ b/vllm_ascend/core/kv_cache_interface.py
+@@ -348,8 +348,15 @@ class AscendIndexerKPoolTailSpec(SlidingWindowSpec):
+ 
+ 
+ def register_ascend_kv_cache_specs() -> None:
++    # Lazy because compressor_tail inherits the storage spec in this module.
++    from vllm_ascend.core.compressor_tail import AscendCompressorTailSpec, CompressorTailManager
+     from vllm_ascend.models.glm5next.kv_cache import KpoolTailManager
+ 
++    KVCacheSpecRegistry.register(
++        kvcache_spec_cls=AscendCompressorTailSpec,
++        manager_class=CompressorTailManager,
++        uniform_type_base_spec=AscendCompressorTailSpec,
++    )
+     KVCacheSpecRegistry.register(
+         kvcache_spec_cls=AscendMLAAttentionSpec,
+         manager_class=FullAttentionManager,
+diff --git a/vllm_ascend/models/deepseek_v4/compressor.py b/vllm_ascend/models/deepseek_v4/compressor.py
+index 0aec2bc..e214103 100644
+--- a/vllm_ascend/models/deepseek_v4/compressor.py
++++ b/vllm_ascend/models/deepseek_v4/compressor.py
+@@ -35,8 +35,11 @@ from vllm.model_executor.layers.linear import ReplicatedLinear
+ from vllm.model_executor.layers.quantization import QuantizationConfig
+ from vllm.models.deepseek_v4.compressor import CompressorStateCache
+ from vllm.transformers_utils.configs.deepseek_v4 import DeepseekV4Config
++from vllm.utils.math_utils import cdiv
+ from vllm.v1.kv_cache_interface import KVCacheSpec
+ 
++from vllm_ascend.ascend_config import get_ascend_config
++from vllm_ascend.core.compressor_tail import AscendCompressorTailSpec
+ from vllm_ascend.core.kv_cache_interface import AscendSlidingWindowMLASpec
+ from vllm_ascend.device.hardware_profile import HardwareCapability, get_current_hardware_profile
+ from vllm_ascend.worker.device_metadata import DeviceMetadataStage, wait_for_device_metadata
+@@ -61,6 +64,19 @@ class AscendCompressorStateCache(CompressorStateCache):
+         pads = dsv4_block_sizes(vllm_config)[vllm_config.cache_config.block_size][1]
+         page_size_padded = pads[0] if self.state_dim == 2 * 256 and self.compress_ratio == 4 else pads[1]
+ 
++        if get_ascend_config().enable_dsv4_shared_compressor_workspace:
++            return AscendCompressorTailSpec(
++                block_size=self.block_size,
++                num_kv_heads=1,
++                head_size=self.state_dim,
++                dtype=self.dtype,
++                sliding_window=self.sliding_window,
++                alignment=None,
++                page_size_padded=page_size_padded,
++                tail_tokens=self.sliding_window,
++                ring_blocks_per_request=cdiv(self.sliding_window, self.block_size),
++            )
++
+         return AscendSlidingWindowMLASpec(
+             block_size=self.block_size,
+             num_kv_heads=1,
+@@ -219,6 +235,6 @@ class Compressor(nn.Module):
+             coff=2 if self.overlap else 1,
+             norm_eps=self.norm_eps,
+             rotary_mode=2,
+-            cache_mode=1,
++            cache_mode=2 if get_ascend_config().enable_dsv4_shared_compressor_workspace else 1,
+         )
+         return compressed_kv, slot_mapping
